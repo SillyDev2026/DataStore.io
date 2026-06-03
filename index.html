@@ -61,9 +61,6 @@ const BASE = "http://127.0.0.1:3000";
 let storeData = {};
 let fullData = {};
 
-// ----------------------
-// LOAD STORES
-// ----------------------
 async function loadStores() {
   try {
     const res = await fetch(BASE + "/datastore/list");
@@ -95,9 +92,6 @@ async function loadStores() {
   }
 }
 
-// ----------------------
-// LOAD SCOPES
-// ----------------------
 function loadScopes() {
   const storeKey = document.getElementById("stores").value;
   const scopeSel = document.getElementById("scopes");
@@ -120,9 +114,6 @@ function loadScopes() {
   loadFull();
 }
 
-// ----------------------
-// LOAD FULL DATASTORE
-// ----------------------
 async function loadFull() {
   try {
     const storeKey = document.getElementById("stores").value;
@@ -168,9 +159,6 @@ async function loadFull() {
   }
 }
 
-// ----------------------
-// SHOW USER
-// ----------------------
 function loadUser() {
   const uid = document.getElementById("users").value;
 
@@ -180,21 +168,14 @@ function loadUser() {
     JSON.stringify(data, null, 2);
 }
 
-// ----------------------
-// EVENTS
-// ----------------------
 document.getElementById("stores").addEventListener("change", loadScopes);
 document.getElementById("scopes").addEventListener("change", loadFull);
 document.getElementById("users").addEventListener("change", loadUser);
 
-// ----------------------
-// AUTO REFRESH
-// ----------------------
 setInterval(() => {
   loadStores();
 }, 30000);
 
-// INIT
 loadStores();
 </script>
 </body>
