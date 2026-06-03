@@ -1,91 +1,162 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>DataStore Dashboard</title>
-  <style>
-    body {
-      font-family: Arial;
-      background: #0f0f0f;
-      color: white;
-      padding: 20px;
-    }
+<meta charset="UTF-8">
+<title>DataStore Explorer</title>
 
-    input, button {
-      padding: 10px;
-      margin: 5px;
-      border-radius: 6px;
-      border: none;
-    }
+<style>
+body {
+  font-family: Arial;
+  background: #0f0f0f;
+  color: white;
+  padding: 20px;
+}
 
-    button {
-      cursor: pointer;
-      background: #4caf50;
-      color: white;
-    }
+select {
+  padding: 10px;
+  margin: 5px;
+  width: 200px;
+}
 
-    .box {
-      margin-top: 20px;
-      padding: 15px;
-      background: #1c1c1c;
-      border-radius: 10px;
-    }
+.box {
+  margin-top: 20px;
+  background: #1c1c1c;
+  padding: 15px;
+  border-radius: 10px;
+}
 
-    pre {
-      background: #000;
-      padding: 10px;
-      border-radius: 8px;
-      overflow-x: auto;
-    }
-  </style>
+pre {
+  background: black;
+  padding: 10px;
+  overflow-x: auto;
+  border-radius: 8px;
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+</style>
 </head>
 
 <body>
 
-<h1>📦 Roblox DataStore Viewer</h1>
+<h1>📦 DataStore Explorer</h1>
 
-<input id="datastore" placeholder="DataStore name">
-<input id="scope" placeholder="Scope (global)">
-<input id="userId" placeholder="User ID">
-
-<button onclick="getData()">Get Data</button>
+<div class="row">
+  <select id="stores" onchange="loadScopes()"></select>
+  <select id="scopes" onchange="loadFull()"></select>
+  <select id="users" onchange="loadUser()"></select>
+</div>
 
 <div class="box">
-  <h3>Result:</h3>
-  <pre id="output">Waiting...</pre>
+  <h3>Data Viewer</h3>
+  <pre id="output">Loading...</pre>
 </div>
 
 <script>
-const BASE_URL = "http://127.0.0.1:3000";
+const BASE = "http://127.0.0.1:3000";
 
-async function getData() {
-  const datastore = document.getElementById("datastore").value;
-  const scope = document.getElementById("scope").value || "global";
-  const userId = document.getElementById("userId").value;
+let cache = {};
+let fullCache = {};
 
-  try {
-    const res = await fetch(BASE_URL + "/datastore/get", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        datastore,
-        scope,
-        userId
-      })
-    });
+// ----------------------
+// LOAD ALL STORES
+// ----------------------
+async function loadStores() {
+  const res = await fetch(BASE + "/datastore/list");
+  cache = await res.json();
 
-    const data = await res.json();
+  const storeSel = document.getElementById("stores");
+  storeSel.innerHTML = "";
 
-    document.getElementById("output").textContent =
-      JSON.stringify(data, null, 2);
+  Object.keys(cache).forEach(store => {
+    const opt = document.createElement("option");
+    opt.value = store;
+    opt.textContent = store;
+    storeSel.appendChild(opt);
+  });
 
-  } catch (err) {
-    document.getElementById("output").textContent =
-      "Error: " + err.message;
-  }
+  loadScopes();
 }
+
+// ----------------------
+// LOAD SCOPES
+// ----------------------
+function loadScopes() {
+  const store = document.getElementById("stores").value;
+  const scopes = cache[store] || [];
+
+  const scopeSel = document.getElementById("scopes");
+  scopeSel.innerHTML = "";
+
+  scopes.forEach(scope => {
+    const opt = document.createElement("option");
+    opt.value = scope;
+    opt.textContent = scope;
+    scopeSel.appendChild(opt);
+  });
+
+  loadFull();
+}
+
+// ----------------------
+// LOAD FULL DATASTORE
+// ----------------------
+async function loadFull() {
+  const store = document.getElementById("stores").value;
+  const scope = document.getElementById("scopes").value;
+
+  const res = await fetch(BASE + "/datastore/full", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      datastore: store,
+      scope: scope
+    })
+  });
+
+  const data = await res.json();
+
+  fullCache = data.data || {};
+
+  const userSel = document.getElementById("users");
+  userSel.innerHTML = "";
+
+  Object.keys(fullCache).forEach(uid => {
+    const opt = document.createElement("option");
+    opt.value = uid;
+    opt.textContent = uid;
+    userSel.appendChild(opt);
+  });
+
+  loadUser();
+}
+
+// ----------------------
+// SHOW USER DATA
+// ----------------------
+function loadUser() {
+  const uid = document.getElementById("users").value;
+
+  const data = fullCache[uid];
+
+  document.getElementById("output").textContent =
+    JSON.stringify(data, null, 2);
+}
+
+// ----------------------
+// AUTO REFRESH (30s)
+// ----------------------
+setInterval(() => {
+  if (document.getElementById("stores").value) {
+    loadFull();
+  }
+}, 30000);
+
+// INIT
+loadStores();
 </script>
 
 </body>
