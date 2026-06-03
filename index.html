@@ -148,6 +148,97 @@ async function loadFull() {
 // ----------------------
 // LOAD USER
 // ----------------------
+<script>
+const BASE = "http://127.0.0.1:3000";
+
+let cache = {};
+let fullCache = {};
+
+// ----------------------
+// LOAD STORES
+// ----------------------
+async function loadStores() {
+  const res = await fetch(BASE + "/datastore/list");
+  const data = await res.json();
+
+  cache = data.stores || {}; // 🔥 FIX
+
+  const storeSel = document.getElementById("stores");
+  storeSel.innerHTML = "";
+
+  Object.keys(cache).forEach(storeKey => {
+    const opt = document.createElement("option");
+    opt.value = storeKey;
+    opt.textContent = storeKey;
+    storeSel.appendChild(opt);
+  });
+
+  loadScopes();
+}
+
+// ----------------------
+// LOAD SCOPES (FIXED)
+// ----------------------
+function loadScopes() {
+  const storeKey = document.getElementById("stores").value;
+  const storeData = cache[storeKey];
+
+  const scopeSel = document.getElementById("scopes");
+  scopeSel.innerHTML = "";
+
+  if (!storeData) return;
+
+  // split "Game:global"
+  const parts = storeKey.split(":");
+  const scope = parts[1] || "global";
+
+  const opt = document.createElement("option");
+  opt.value = scope;
+  opt.textContent = scope;
+
+  scopeSel.appendChild(opt);
+
+  loadFull();
+}
+
+// ----------------------
+// LOAD FULL DATA
+// ----------------------
+async function loadFull() {
+  const storeKey = document.getElementById("stores").value;
+  const scope = document.getElementById("scopes").value;
+
+  const name = storeKey.split(":")[0];
+
+  const res = await fetch(BASE + "/datastore/full", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      datastore: name,
+      scope: scope
+    })
+  });
+
+  const data = await res.json();
+
+  fullCache = data.data || {};
+
+  const userSel = document.getElementById("users");
+  userSel.innerHTML = "";
+
+  Object.keys(fullCache).forEach(uid => {
+    const opt = document.createElement("option");
+    opt.value = uid;
+    opt.textContent = uid;
+    userSel.appendChild(opt);
+  });
+
+  loadUser();
+}
+
+// ----------------------
+// SHOW USER
+// ----------------------
 function loadUser() {
   const uid = document.getElementById("users").value;
   const data = fullCache[uid];
@@ -167,6 +258,7 @@ setInterval(() => {
 
 // INIT
 loadStores();
+</script>
 </script>
 
 </body>
