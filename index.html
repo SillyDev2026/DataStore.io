@@ -15,7 +15,7 @@ body {
 select {
   padding: 10px;
   margin: 5px;
-  width: 200px;
+  width: 220px;
 }
 
 .box {
@@ -28,8 +28,8 @@ select {
 pre {
   background: black;
   padding: 10px;
-  overflow-x: auto;
   border-radius: 8px;
+  overflow-x: auto;
 }
 
 .row {
@@ -45,7 +45,7 @@ pre {
 <h1>📦 DataStore Explorer</h1>
 
 <div class="row">
-  <select id="stores" onchange="loadScopes()"></select>
+  <select id="stores" onchange="onStoreChange()"></select>
   <select id="scopes" onchange="loadFull()"></select>
   <select id="users" onchange="loadUser()"></select>
 </div>
@@ -58,40 +58,54 @@ pre {
 <script>
 const BASE = "http://127.0.0.1:3000";
 
-let cache = {};
+let listCache = {};
 let fullCache = {};
+let currentStores = {};
 
 // ----------------------
-// LOAD ALL STORES
+// LOAD STORES
 // ----------------------
 async function loadStores() {
   const res = await fetch(BASE + "/datastore/list");
-  cache = await res.json();
+  listCache = await res.json();
 
   const storeSel = document.getElementById("stores");
   storeSel.innerHTML = "";
 
-  Object.keys(cache).forEach(store => {
+  currentStores = {};
+
+  Object.values(listCache).forEach(entry => {
+    const name = entry.datastore;
+    const scope = entry.scope;
+
+    const key = name + ":" + scope;
+
+    if (!currentStores[name]) currentStores[name] = new Set();
+    currentStores[name].add(scope);
+  });
+
+  Object.keys(currentStores).forEach(store => {
     const opt = document.createElement("option");
     opt.value = store;
     opt.textContent = store;
     storeSel.appendChild(opt);
   });
 
-  loadScopes();
+  onStoreChange();
 }
 
 // ----------------------
-// LOAD SCOPES
+// STORE CHANGED
 // ----------------------
-function loadScopes() {
+function onStoreChange() {
   const store = document.getElementById("stores").value;
-  const scopes = cache[store] || [];
-
   const scopeSel = document.getElementById("scopes");
+
   scopeSel.innerHTML = "";
 
-  scopes.forEach(scope => {
+  if (!currentStores[store]) return;
+
+  Array.from(currentStores[store]).forEach(scope => {
     const opt = document.createElement("option");
     opt.value = scope;
     opt.textContent = scope;
@@ -106,15 +120,12 @@ function loadScopes() {
 // ----------------------
 async function loadFull() {
   const store = document.getElementById("stores").value;
-  const scope = document.getElementById("scopes").value;
+  const scope = document.getElementById("scopes").value || "global";
 
   const res = await fetch(BASE + "/datastore/full", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      datastore: store,
-      scope: scope
-    })
+    body: JSON.stringify({ datastore: store, scope })
   });
 
   const data = await res.json();
@@ -135,11 +146,10 @@ async function loadFull() {
 }
 
 // ----------------------
-// SHOW USER DATA
+// LOAD USER
 // ----------------------
 function loadUser() {
   const uid = document.getElementById("users").value;
-
   const data = fullCache[uid];
 
   document.getElementById("output").textContent =
@@ -147,11 +157,11 @@ function loadUser() {
 }
 
 // ----------------------
-// AUTO REFRESH (30s)
+// AUTO REFRESH
 // ----------------------
 setInterval(() => {
   if (document.getElementById("stores").value) {
-    loadFull();
+    loadStores();
   }
 }, 30000);
 
