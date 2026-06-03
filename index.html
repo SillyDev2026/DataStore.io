@@ -58,139 +58,58 @@ pre {
 <script>
 const BASE = "http://127.0.0.1:3000";
 
-let listCache = {};
-let fullCache = {};
-let currentStores = {};
+let storeData = {};
+let fullData = {};
 
 // ----------------------
 // LOAD STORES
 // ----------------------
 async function loadStores() {
-  const res = await fetch(BASE + "/datastore/list");
-  listCache = await res.json();
+  try {
+    const res = await fetch(BASE + "/datastore/list");
+    const data = await res.json();
 
-  const storeSel = document.getElementById("stores");
-  storeSel.innerHTML = "";
+    storeData = data.stores || {};
 
-  currentStores = {};
+    const storeSel = document.getElementById("stores");
+    storeSel.innerHTML = "";
 
-  Object.values(listCache).forEach(entry => {
-    const name = entry.datastore;
-    const scope = entry.scope;
+    const keys = Object.keys(storeData);
 
-    const key = name + ":" + scope;
+    if (keys.length === 0) {
+      storeSel.innerHTML = `<option>No stores</option>`;
+      return;
+    }
 
-    if (!currentStores[name]) currentStores[name] = new Set();
-    currentStores[name].add(scope);
-  });
+    keys.forEach(key => {
+      const opt = document.createElement("option");
+      opt.value = key;
+      opt.textContent = key;
+      storeSel.appendChild(opt);
+    });
 
-  Object.keys(currentStores).forEach(store => {
-    const opt = document.createElement("option");
-    opt.value = store;
-    opt.textContent = store;
-    storeSel.appendChild(opt);
-  });
+    loadScopes();
 
-  onStoreChange();
+  } catch (err) {
+    console.error("loadStores error:", err);
+  }
 }
 
 // ----------------------
-// STORE CHANGED
-// ----------------------
-function onStoreChange() {
-  const store = document.getElementById("stores").value;
-  const scopeSel = document.getElementById("scopes");
-
-  scopeSel.innerHTML = "";
-
-  if (!currentStores[store]) return;
-
-  Array.from(currentStores[store]).forEach(scope => {
-    const opt = document.createElement("option");
-    opt.value = scope;
-    opt.textContent = scope;
-    scopeSel.appendChild(opt);
-  });
-
-  loadFull();
-}
-
-// ----------------------
-// LOAD FULL DATASTORE
-// ----------------------
-async function loadFull() {
-  const store = document.getElementById("stores").value;
-  const scope = document.getElementById("scopes").value || "global";
-
-  const res = await fetch(BASE + "/datastore/full", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ datastore: store, scope })
-  });
-
-  const data = await res.json();
-
-  fullCache = data.data || {};
-
-  const userSel = document.getElementById("users");
-  userSel.innerHTML = "";
-
-  Object.keys(fullCache).forEach(uid => {
-    const opt = document.createElement("option");
-    opt.value = uid;
-    opt.textContent = uid;
-    userSel.appendChild(opt);
-  });
-
-  loadUser();
-}
-
-// ----------------------
-// LOAD USER
-// ----------------------
-<script>
-const BASE = "http://127.0.0.1:3000";
-
-let cache = {};
-let fullCache = {};
-
-// ----------------------
-// LOAD STORES
-// ----------------------
-async function loadStores() {
-  const res = await fetch(BASE + "/datastore/list");
-  const data = await res.json();
-
-  cache = data.stores || {}; // 🔥 FIX
-
-  const storeSel = document.getElementById("stores");
-  storeSel.innerHTML = "";
-
-  Object.keys(cache).forEach(storeKey => {
-    const opt = document.createElement("option");
-    opt.value = storeKey;
-    opt.textContent = storeKey;
-    storeSel.appendChild(opt);
-  });
-
-  loadScopes();
-}
-
-// ----------------------
-// LOAD SCOPES (FIXED)
+// LOAD SCOPES
 // ----------------------
 function loadScopes() {
   const storeKey = document.getElementById("stores").value;
-  const storeData = cache[storeKey];
-
   const scopeSel = document.getElementById("scopes");
+
   scopeSel.innerHTML = "";
 
-  if (!storeData) return;
+  if (!storeKey || !storeData[storeKey]) {
+    scopeSel.innerHTML = `<option>No scope</option>`;
+    return;
+  }
 
-  // split "Game:global"
-  const parts = storeKey.split(":");
-  const scope = parts[1] || "global";
+  const scope = storeKey.split(":")[1] || "global";
 
   const opt = document.createElement("option");
   opt.value = scope;
@@ -202,38 +121,51 @@ function loadScopes() {
 }
 
 // ----------------------
-// LOAD FULL DATA
+// LOAD FULL DATASTORE
 // ----------------------
 async function loadFull() {
-  const storeKey = document.getElementById("stores").value;
-  const scope = document.getElementById("scopes").value;
+  try {
+    const storeKey = document.getElementById("stores").value;
+    const scope = document.getElementById("scopes").value;
 
-  const name = storeKey.split(":")[0];
+    const name = storeKey.split(":")[0];
 
-  const res = await fetch(BASE + "/datastore/full", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      datastore: name,
-      scope: scope
-    })
-  });
+    const res = await fetch(BASE + "/datastore/full", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        datastore: name,
+        scope
+      })
+    });
 
-  const data = await res.json();
+    const data = await res.json();
 
-  fullCache = data.data || {};
+    fullData = data.data || {};
 
-  const userSel = document.getElementById("users");
-  userSel.innerHTML = "";
+    const userSel = document.getElementById("users");
+    userSel.innerHTML = "";
 
-  Object.keys(fullCache).forEach(uid => {
-    const opt = document.createElement("option");
-    opt.value = uid;
-    opt.textContent = uid;
-    userSel.appendChild(opt);
-  });
+    const users = Object.keys(fullData);
 
-  loadUser();
+    if (users.length === 0) {
+      userSel.innerHTML = `<option>No users</option>`;
+      document.getElementById("output").textContent = "Empty datastore";
+      return;
+    }
+
+    users.forEach(uid => {
+      const opt = document.createElement("option");
+      opt.value = uid;
+      opt.textContent = uid;
+      userSel.appendChild(opt);
+    });
+
+    loadUser();
+
+  } catch (err) {
+    console.error("loadFull error:", err);
+  }
 }
 
 // ----------------------
@@ -241,25 +173,29 @@ async function loadFull() {
 // ----------------------
 function loadUser() {
   const uid = document.getElementById("users").value;
-  const data = fullCache[uid];
+
+  const data = fullData[uid];
 
   document.getElementById("output").textContent =
     JSON.stringify(data, null, 2);
 }
 
 // ----------------------
+// EVENTS
+// ----------------------
+document.getElementById("stores").addEventListener("change", loadScopes);
+document.getElementById("scopes").addEventListener("change", loadFull);
+document.getElementById("users").addEventListener("change", loadUser);
+
+// ----------------------
 // AUTO REFRESH
 // ----------------------
 setInterval(() => {
-  if (document.getElementById("stores").value) {
-    loadStores();
-  }
+  loadStores();
 }, 30000);
 
 // INIT
 loadStores();
 </script>
-</script>
-
 </body>
 </html>
